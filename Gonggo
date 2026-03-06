@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gongGO // Search the Fragmented Web (2027)</title>
+    <!-- 
+        gongGO CORE KERNEL v9.4.2
+        DISTRIBUTION: GLOBAL_TERMINAL_2027
+        SECURITY_LEVEL: 5
+    -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* =========================================
+           GLOBAL PROTOCOLS & THEME
+           ========================================= */
+        :root {
+            --matrix-green: #00ff41;
+            --dim-green: #008f11;
+            --dark-green: #003b00;
+            --bg-black: #0a0a0a;
+            --pure-black: #000000;
+            --text-white: #e0e0e0;
+            --border-style: 1px solid #008f11;
+            --font-terminal: 'Courier New', Courier, monospace;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            outline: none;
+            cursor: crosshair;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--matrix-green);
+            font-family: var(--font-terminal);
+            overflow-x: hidden;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+
+        /* Standard scrollbar for webkit */
+        ::-webkit-scrollbar { width: 4px; height: 1px; }
+        ::-webkit-scrollbar-track { background: var(--pure-black); }
+        ::-webkit-scrollbar-thumb { background: var(--matrix-green); border-radius: 10px; }
+
+        .hidden { display: none !important; }
+
+        /* =========================================
+           UI ANIMATIONS
+           ========================================= */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.99; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .overlay::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: rgba(18, 16, 16, 0.1);
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+
+        /* =========================================
+           COMPONENTS
+           ========================================= */
+        .gong-btn {
+            background: transparent;
+            border: var(--border-style);
+            color: var(--matrix-green);
+            padding: 10px 20px;
+            font-family: var(--font-terminal);
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: var(--transition-speed);
+            margin: 5px;
+        }
+
+        .gong-btn:hover {
+            background: var(--matrix-green);
+            color: var(--pure-black);
+            box-shadow: 0 0 15px var(--matrix-green);
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--dim-green);
+            font-size: 12px;
+            margin-left: 20px;
+            transition: 0.2s;
+        }
+
+        .nav-link:hover { color: var(--matrix-green); text-shadow: 0 0 5px var(--matrix-green); }
+
+        /* =========================================
+           TOP NAVIGATION
+           ========================================= */
+        header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 20px 40px;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            z-index: 10;
+        }
+
+        .user-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .gmail-badge {
+            background: #d93025;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* =========================================
+           HOME VIEW (LANDING)
+           ========================================= */
+        #home-view {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo-main {
+            font-size: 120px;
+            font-weight: 900;
+            color: var(--pure-black);
+            -webkit-text-stroke: 1px var(--matrix-green);
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px var(--dark-green);
+            animation: flicker 2s infinite;
+        }
+
+        .logo-main span { padding: 0 10px; }
+
+        .search-container { width: 100%; max-width: 600px; padding: 0 20px; }
+
+        .search-bar-wrap {
+            border: 2px solid var(--dim-green);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            height: 54px;
+            background: rgba(0, 0, 0, 0.8);
+            transition: 0.3s;
+        }
+
+        .search-bar-wrap:focus-within {
+            border-color: var(--matrix-green);
+            box-shadow: 0 0 25px var(--dark-green);
+        }
+
+        .search-bar-wrap i { color: var(--dim-green); margin-right: 15px; }
+
+        .search-input {
+            background: transparent;
+            border: none;
+            color: var(--matrix-green);
+            width: 100%;
+            font-size: 20px;
+            font-family: var(--font-terminal);
+        }
+
+        /* =========================================
+           MODALS (AUTH)
+           ========================================= */
+        #auth-overlay {
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .auth-card {
+            border: var(--border-style);
+            padding: 40px;
+            width: 400px;
+            background: var(--pure-black);
+            box-shadow: 0 0 50px var(--dark-green);
+        }
+
+        .auth-card h2 { margin-bottom: 20px; font-size: 18px; text-transform: uppercase; }
+        
+        .gmail-input {
+            width: 100%;
+            background: #111;
+            border: 1px solid var(--dim-green);
+            padding: 12px;
+            color: var(--matrix-green);
+            margin-bottom: 20px;
+            font-family: var(--font-terminal);
+        }
+
+        .error-msg { color: #ff0033; font-size: 12px; margin-bottom: 10px; }
+
+        /* =========================================
+           RESULTS PAGE VIEW
+           ========================================= */
+        #results-view { padding-bottom: 150px; }
+
+        .header-results {
+            padding: 20px 40px;
+            border-bottom: var(--border-style);
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            position: sticky;
+            top: 0;
+            background: var(--bg-black);
+            z-index: 50;
+        }
+
+        .logo-sm {
+            font-size: 28px;
+            font-weight: bold;
+            border: 1px solid var(--matrix-green);
+            padding: 2px 8px;
+            cursor: pointer;
+        }
+
+        .res-layout { display: flex; }
+
+        /* Sidebar - Simplified for 5th Graders */
+        .sidebar {
+            width: 300px;
+            padding: 40px;
+            border-right: var(--border-style);
+            height: calc(100vh - 80px);
+        }
+
+        .side-title { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-bottom: 20px; 
+            text-transform: uppercase;
+            color: white; 
+        }
+
+        .filter-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            color: var(--dim-green);
+            padding: 10px 0;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .filter-btn:hover { color: var(--matrix-green); padding-left: 10px; }
+        .filter-btn.active { color: var(--matrix-green); font-weight: bold; text-decoration: underline; }
+
+        /* Content Area */
+        .main-results { flex: 1; padding: 40px 60px; max-width: 900px; }
+
+        .stats-bar {
+            font-size: 12px;
+            color: var(--dim-green);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        /* AI (gongChat) Chat-Style */
+        .ai-chat-interface {
+            border: 1px dashed var(--matrix-green);
+            padding: 25px;
+            margin-bottom: 40px;
+            background: rgba(0, 59, 0, 0.1);
+            position: relative;
+        }
+
+        .ai-chat-header {
+            position: absolute;
+            top: -10px; left: 20px;
+            background: var(--matrix-green);
+            color: black;
+            padding: 2px 10px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .ai-chat-msg {
+            color: var(--text-white);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--matrix-green);
+            vertical-align: middle;
+            animation: flicker 1s infinite step-end;
+            margin-left: 5px;
+        }
+
+        /* Result Cards */
+        .result-entry { margin-bottom: 45px; animation: fadeInUp 0.5s ease-out; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .entry-link { font-size: 12px; color: var(--dim-green); display: block; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .entry-h { font-size: 22px; color: #fff; margin-bottom: 8px; display: inline-block; }
+        .entry-h:hover { text-decoration: underline; color: var(--matrix-green); }
+        .entry-snip { font-size: 15px; color: var(--matrix-green); opacity: 0.8; line-height: 1.5; }
+
+        /* =========================================
+           FOOTER 2027
+           ========================================= */
+        footer {
+            border-top: var(--border-style);
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--dim-green);
+        }
+
+        #matrix-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.04;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrix-bg"></canvas>
+    <div class="scanlines"></div>
+
+    <!-- SIGN-IN OVERLAY -->
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <h2>System Authentication</h2>
+            <p style="font-size: 12px; margin-bottom: 15px;">Required: Global G-Account Verification</p>
+            <input type="text" id="auth-email" class="gmail-input" placeholder="Enter Gmail (ex: john@gmail.com)">
+            <p id="auth-error" class="error-msg hidden">ACCESS DENIED: ONLY GMAIL PROTOCOLS ACCEPTED.</p>
+            <button class="gong-btn" style="width:100%" onclick="attemptAuth()">Authenticate</button>
+            <div style="margin-top: 20px; font-size: 10px; opacity: 0.5;">
+                Note: No registration needed. System identifies Gmail hash 2027 standards.
+            </div>
+        </div>
+    </div>
+
+    <!-- WRAPPER -->
+    <div id="app-content" class="hidden">
+        
+        <header>
+            <div class="user-status">
+                <span class="gmail-badge"><i class="fas fa-envelope"></i> Gmail Active</span>
+                <span id="user-display" style="font-size: 12px;"></span>
+                <a class="nav-link" href="#">Fragments</a>
+                <a class="nav-link" href="#">System_Admin</a>
+                <div style="width:30px; height:30px; border:1px solid var(--matrix-green); display:flex; justify-content:center; align-items:center;">
+                    <i class="fas fa-user-secret"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- HOME VIEW -->
+        <main id="home-view">
+            <h1 class="logo-main neon-text">
+                <span>g</span><span>o</span><span>n</span><span>g</span><span>G</span><span>O</span>
+            </h1>
+            <div class="search-container">
+                <div class="search-bar-wrap">
+                    <i class="fas fa-terminal"></i>
+                    <input type="text" id="home-search" class="search-input" placeholder="Query the 2027 Decentralized Web..." autocomplete="off">
+                </div>
+                <div style="margin-top: 30px;">
+                    <button class="gong-btn" onclick="triggerSearch('home-search')">Execute Search</button>
+                    <button class="gong-btn" onclick="luckScan()">Anomaly Scan</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- RESULTS VIEW -->
+        <main id="results-view" class="hidden">
+            <div class="header-results">
+                <div class="logo-sm" onclick="navHome()">gongGO</div>
+                <div class="search-bar-wrap" style="width: 100%; max-width: 600px; height: 44px;">
+                    <input type="text" id="res-search" class="search-input">
+                    <i class="fas fa-times" style="cursor:pointer" onclick="clearRes()"></i>
+                    <i class="fas fa-search" style="cursor:pointer" onclick="triggerSearch('res-search')"></i>
+                </div>
+            </div>
+
+            <div class="res-layout">
+                <aside class="sidebar">
+                    <div class="side-title">Where to search?</div>
+                    <button class="filter-btn active" onclick="setNode('All', this)">Everywhere</button>
+                    <button class="filter-btn" onclick="setNode('Web', this)">Public Websites</button>
+                    <button class="filter-btn" onclick="setNode('Space', this)">Satellite Logs</button>
+                    <button class="filter-btn" onclick="setNode('Hidden', this)">Private Folders</button>
+
+                    <div class="side-title" style="margin-top: 40px;">How old?</div>
+                    <button class="filter-btn active" onclick="setTime('Any', this)">Any Time</button>
+                    <button class="filter-btn" onclick="setTime('Recent', this)">Today</button>
+                    <button class="filter-btn" onclick="setTime('Archive', this)">Older Stuff</button>
+                </aside>
+
+                <main class="main-results">
+                    <div class="stats-bar">
+                        PROTOCOL_RESPONSE: <span id="res-total">0</span> matches located in <span id="res-timer">0.00</span> ms.
+                    </div>
+
+                    <!-- AI BRAIN (gongChat) -->
+                    <div class="ai-chat-interface">
+                        <div class="ai-chat-header">gongGO_INTELLIGENCE_LLM</div>
+                        <div class="ai-chat-msg" id="ai-response">
+                            System standing by for query...
+                        </div>
+                    </div>
+
+                    <div id="results-list">
+                        <!-- Search cards go here -->
+                    </div>
+                </main>
+            </div>
+        </main>
+
+        <footer>
+            <div>&copy; 2027 gongGO Indexing Corp. // All Rights Reserved.</div>
+            <div style="display:flex; gap:30px;">
+                <a class="nav-link" href="#">Privacy_Protocol</a>
+                <a class="nav-link" href="#">Global_Terms</a>
+                <a class="nav-link" href="#">Settings</a>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- =========================================
+         SCRIPT LOGIC (THE BRAIN)
+         ========================================= -->
+    <script>
+        /**
+         * 1. DATABASE MANAGEMENT
+         * Exactly 1,500+ items plus specific real-world sites
+         */
+        const DB = [];
+        let authenticatedUser = "";
+        let filterNode = "All";
+        let filterTime = "Any";
+
+        function buildData() {
+            // Real physical sites first for "The Fix"
+            const realSites = [
+                { title: "YouTube", url: "https://www.youtube.com", desc: "Watch videos, listen to music, and upload your own content to the world.", node: "Web", time: "Recent" },
+                { title: "Google Search", url: "https://www.google.com", desc: "Legacy search engine platform from the early 21st century.", node: "Web", time: "Archive" },
+                { title: "ChatGPT / OpenAI", url: "https://chat.openai.com", desc: "Artificial intelligence system that talks back to you.", node: "Web", time: "Recent" },
+                { title: "Stack Overflow", url: "https://stackoverflow.com", desc: "Public knowledge base for software engineers and code fragments.", node: "Web", time: "Recent" },
+                { title: "GitHub", url: "https://github.com", desc: "Archive of the world's decentralized code repositories.", node: "Web", time: "Archive" },
+                { title: "Amazon Warehouse", url: "https://amazon.com", desc: "Global logistics and purchase portal.", node: "Web", time: "Recent" },
+                { title: "Facebook Meta", url: "https://facebook.com", desc: "Legacy social connect node.", node: "Web", time: "Archive" },
+                { title: "Twitter X Terminal", url: "https://x.com", desc: "Pulse of the global stream.", node: "Web", time: "Recent" }
+            ];
+
+            DB.push(...realSites);
+
+            // Generate 1500+ generic items
+            const topics = ["Satellite Scan", "Employee Log", "Security Protocol", "Financial Block", "System Fragment", "Weather Node", "Traffic Stream", "Ancient Data"];
+            const nodes = ["Web", "Space", "Hidden"];
+            const ages = ["Recent", "Archive"];
+
+            for(let i=1; i<=1500; i++) {
+                const node = nodes[Math.floor(Math.random() * nodes.length)];
+                const age = ages[Math.floor(Math.random() * ages.length)];
+                const topic = topics[Math.floor(Math.random() * topics.length)];
+                
+                DB.push({
+                    title: `${topic} - Code_ID_${i}`,
+                    url: `gonggo://internal/${node.toLowerCase()}/data_packet_${i}`,
+                    desc: `Automatically indexed 2027 ${topic.toLowerCase()}. Contains ${i*4}KB of compressed relational metadata from ${node}. Version: v9.${i}.`,
+                    node: node,
+                    time: age
+                });
+            }
+        }
+
+        /**
+         * 2. AUTHENTICATION (GMAIL ONLY)
+         */
+        function attemptAuth() {
+            const email = document.getElementById('auth-email').value.trim();
+            const error = document.getElementById('auth-error');
+            
+            if(email.toLowerCase().endsWith('@gmail.com')) {
+                authenticatedUser = email;
+                document.getElementById('auth-overlay').classList.add('hidden');
+                document.getElementById('app-content').classList.remove('hidden');
+                document.getElementById('user-display').innerText = email;
+                initMatrix(); // Start bg effect after load
+            } else {
+                error.classList.remove('hidden');
+                document.getElementById('auth-email').style.borderColor = '#ff0033';
+            }
+        }
+
+        /**
+         * 3. SEARCH & AI ENGINE
+         */
+        function triggerSearch(id) {
+            const query = document.getElementById(id).value.trim();
+            if(!query) return;
+
+            document.getElementById('home-view').classList.add('hidden');
+            document.getElementById('results-view').classList.remove('hidden');
+            document.getElementById('res-search').value = query;
+
+            runEngine(query);
+        }
+
+        function runEngine(query) {
+            const startTime = performance.now();
+            
+            // FILTER LOGIC - The Fix: Use includes() for fuzzy matching
+            const filtered = DB.filter(item => {
+                const matchTerm = item.title.toLowerCase().includes(query.toLowerCase()) || 
+                                  item.desc.toLowerCase().includes(query.toLowerCase()) ||
+                                  item.url.toLowerCase().includes(query.toLowerCase());
+                
+                const matchNode = (filterNode === "All" || item.node === filterNode);
+                const matchTime = (filterTime === "Any" || item.time === filterTime);
+                
+                return matchTerm && matchNode && matchTime;
+            });
+
+            const endTime = performance.now();
+
+            // Stats Update
+            document.getElementById('res-total').innerText = filtered.length;
+            document.getElementById('res-timer').innerText = (endTime - startTime).toFixed(3);
+
+            // GONGCHAT AI - Simulate ChatGPT
+            generateAIResponse(query, filtered.length);
+
+            // Render List
+            renderResults(filtered);
+        }
+
+        function generateAIResponse(query, count) {
+            const aiBox = document.getElementById('ai-response');
+            aiBox.innerHTML = ''; // Reset
+            
+            const fullText = `Hello! I am gongGO-Intelligence. Regarding your search for "${query.toUpperCase()}", my neural network has parsed the 2027 knowledge fragments. I found ${count} relevant clusters. 
+            
+            Analysis: Within the current global mainframe, "${query}" represents a high-priority data node. Most files originate from the ${filterNode} layer. If you are looking for specific legacy portals like YouTube or Meta, I have prioritized those at the top for your convenience. Keep in mind that 2027 encryption layers are high—access files cautiously.<span class="cursor-blink"></span>`;
+            
+            // Typewriter effect
+            let i = 0;
+            const speed = 15;
+            function typeWriter() {
+                if (i < fullText.length) {
+                    aiBox.innerHTML = fullText.substring(0, i) + '<span class="cursor-blink"></span>';
+                    i++;
+                    setTimeout(typeWriter, speed);
+                }
+            }
+            typeWriter();
+        }
+
+        function renderResults(list) {
+            const container = document.getElementById('results-list');
+            container.innerHTML = '';
+
+            if(list.length === 0) {
+                container.innerHTML = `<p style="color:#ff0033; font-weight:bold; margin-top:20px;">[!] ERROR: QUERY_RETURN_NULL. No fragments found for the current filter set.</p>`;
+                return;
+            }
+
+            // Show top 100 for performance
+            list.slice(0, 100).forEach(item => {
+                const entry = document.createElement('div');
+                entry.className = 'result-entry';
+                entry.innerHTML = `
+                    <span class="entry-link">${item.url}</span>
+                    <a href="#" class="entry-h">${item.title}</a>
+                    <p class="entry-snip">${item.desc}</p>
+                `;
+                container.appendChild(entry);
+            });
+        }
+
+        /**
+         * 4. SYSTEM UTILS
+         */
+        function setNode(val, el) {
+            filterNode = val;
+            updateButtons(el);
+            runEngine(document.getElementById('res-search').value);
+        }
+
+        function setTime(val, el) {
+            filterTime = val;
+            updateButtons(el);
+            runEngine(document.getElementById('res-search').value);
+        }
+
+        function updateButtons(el) {
+            const parent = el.parentElement;
+            parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function navHome() {
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('home-view').classList.remove('hidden');
+            document.getElementById('home-search').value = '';
+        }
+
+        function clearRes() {
+            document.getElementById('res-search').value = '';
+            document.getElementById('res-search').focus();
+        }
+
+        function luckScan() {
+            const samples = ["YouTube", "Satellite", "Secret", "Weather", "X Terminal"];
+            const r = samples[Math.floor(Math.random() * samples.length)];
+            document.getElementById('home-search').value = r;
+            triggerSearch('home-search');
+        }
+
+        // INPUT LISTENERS
+        document.getElementById('home-search').addEventListener('keypress', e => (e.key === 'Enter') && triggerSearch('home-search'));
+        document.getElementById('res-search').addEventListener('keypress', e => (e.key === 'Enter') && triggerSearch('res-search'));
+        document.getElementById('auth-email').addEventListener('keypress', e => (e.key === 'Enter') && attemptAuth());
+
+        /**
+         * 5. MATRIX VISUAL EFFECT
+         */
+        function initMatrix() {
+            const canvas = document.getElementById('matrix-bg');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const chars = "gongGO2027%&*(1010101".split("");
+            const fontSize = 16;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+
+            function draw() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#0F0";
+                ctx.font = fontSize + "px Courier New";
+
+                drops.forEach((y, i) => {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, y * fontSize);
+                    if (y * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                });
+            }
+            setInterval(draw, 50);
+        }
+
+        // INITIALIZE DB
+        buildData();
+    </script>
+</body>
+</html>
